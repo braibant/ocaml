@@ -178,7 +178,7 @@ static char *instr_size_name [20] = {
   "alloc_large@",
 };
 static char *instr_jump_name [20] = {
-  NULL,
+  "fljump00@",
   "fljump01@",
   "fljump02@",
   "fljump03@",
@@ -217,7 +217,9 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
   value cur = Val_NULL, prev;
   header_t *result;
   int i;
+#ifdef CAML_INSTR
   int jump = caml_instr_alloc_jump;
+#endif
   mlsize_t sz, prevsz;
                                   Assert (sizeof (char *) == sizeof (value));
                                   Assert (wo_sz >= 1);
@@ -438,7 +440,7 @@ void caml_fl_init_merge (void)
     CAML_INSTR_INT (instr_size_name[i], instr_size[i]);
     instr_size[i] = 0;
   };
-  for (i = 1; i < 20; i++){
+  for (i = 0; i < 20; i++){
     CAML_INSTR_INT (instr_jump_name[i], instr_jump[i]);
     instr_jump[i] = 0;
   };
