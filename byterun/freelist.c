@@ -153,7 +153,9 @@ static header_t *allocate_block (mlsize_t wh_sz, int flpi, value prev,
 #ifdef CAML_INSTR
 static uintnat instr_size [20] =
   {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-static char *instr_name [20] = {
+static uintnat instr_jump [20] =
+  {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+static char *instr_size_name [20] = {
   NULL,
   "alloc01@",
   "alloc02@",
@@ -175,8 +177,35 @@ static char *instr_name [20] = {
   "alloc90-99@",
   "alloc_large@",
 };
+static char *instr_jump_name [20] = {
+  NULL,
+  "fljump01@",
+  "fljump02@",
+  "fljump03@",
+  "fljump04@",
+  "fljump05@",
+  "fljump06@",
+  "fljump07@",
+  "fljump08@",
+  "fljump09@",
+  "fljump10-19@",
+  "fljump20-29@",
+  "fljump30-39@",
+  "fljump40-49@",
+  "fljump50-59@",
+  "fljump60-69@",
+  "fljump70-79@",
+  "fljump80-89@",
+  "fljump90-99@",
+  "fljump_large@",
+};
 uintnat caml_instr_alloc_jump = 0;
 /* number of pointers followed to allocate from the free list */
+#define CAML_INSTR_INCR_JUMP {do { if (jump < 10){ ++instr_jump[jump];} \
+      else if (jump < 100) {++instr_jump[jump/10 + 9]; } \
+      else { ++instr_jump[19];}} while (0);}
+#else
+#define CAML_INSTR_INCR_JUMP {}
 #endif /*CAML_INSTR*/
 
 /* [caml_fl_allocate] does not set the header of the newly allocated block.
@@ -188,6 +217,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
   value cur = Val_NULL, prev;
   header_t *result;
   int i;
+  int jump = caml_instr_alloc_jump;
   mlsize_t sz, prevsz;
                                   Assert (sizeof (char *) == sizeof (value));
                                   Assert (wo_sz >= 1);
@@ -209,6 +239,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
     cur = Next (prev);
     while (cur != Val_NULL){                         Assert (Is_in_heap (cur));
       if (Wosize_bp (cur) >= wo_sz){
+        CAML_INSTR_INCR_JUMP;
         return allocate_block (Whsize_wosize (wo_sz), 0, prev, cur);
       }
       prev = cur;
@@ -223,6 +254,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
     cur = Next (prev);
     while (prev != fl_prev){
       if (Wosize_bp (cur) >= wo_sz){
+        CAML_INSTR_INCR_JUMP;
         return allocate_block (Whsize_wosize (wo_sz), 0, prev, cur);
       }
       prev = cur;
@@ -232,6 +264,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
 #endif
     }
     /* No suitable block was found. */
+    CAML_INSTR_INCR_JUMP;
     return NULL;
     break;
 
@@ -262,6 +295,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
       if (cur == Val_NULL){
         fl_last = prev;
         beyond = (prev == Fl_head) ? Val_NULL : prev;
+        CAML_INSTR_INCR_JUMP;
         return NULL;
       }else{
         sz = Wosize_bp (cur);
@@ -305,12 +339,14 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
       if (sz < prevsz){
         beyond = cur;
       }else if (sz >= wo_sz){
+        CAML_INSTR_INCR_JUMP;
         return allocate_block (Whsize_wosize (wo_sz), flp_size, prev, cur);
       }
       prev = cur;
       cur = Next (prev);
     }
     fl_last = prev;
+    CAML_INSTR_INCR_JUMP;
     return NULL;
 
   update_flp: /* (i, sz) */
@@ -373,6 +409,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
         }
       }
     }
+    CAML_INSTR_INCR_JUMP;
     return result;
   }
   break;
@@ -381,6 +418,7 @@ header_t *caml_fl_allocate (mlsize_t wo_sz)
     Assert (0);   /* unknown policy */
     break;
   }
+  CAML_INSTR_INCR_JUMP;
   return NULL;  /* NOT REACHED */
 }
 
@@ -397,9 +435,13 @@ void caml_fl_init_merge (void)
 #ifdef CAML_INSTR
   int i;
   for (i = 1; i < 20; i++){
-    CAML_INSTR_INT (instr_name[i], instr_size[i]);
+    CAML_INSTR_INT (instr_size_name[i], instr_size[i]);
     instr_size[i] = 0;
-  }
+  };
+  for (i = 1; i < 20; i++){
+    CAML_INSTR_INT (instr_jump_name[i], instr_jump[i]);
+    instr_jump[i] = 0;
+  };
 #endif /* CAML_INSTR */
   last_fragment = NULL;
   caml_fl_merge = Fl_head;
