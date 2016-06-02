@@ -201,7 +201,8 @@ static char *instr_jump_name [20] = {
 };
 uintnat caml_instr_alloc_jump = 0;
 /* number of pointers followed to allocate from the free list */
-#define CAML_INSTR_INCR_JUMP {do { if (jump < 10){ ++instr_jump[jump];} \
+#define CAML_INSTR_INCR_JUMP {do { jump = caml_instr_alloc_jump - jump;\
+      if (jump < 10){ ++instr_jump[jump];}                             \
       else if (jump < 100) {++instr_jump[jump/10 + 9]; } \
       else { ++instr_jump[19];}} while (0);}
 #else
